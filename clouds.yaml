@@ -1,0 +1,14 @@
+clouds:
+  RCS:
+    auth:
+      auth_url: https://10.254.205.183:5000/v3
+      username: admin
+      password: aighaeC0xaeZiej3
+      project_name: RCS
+      project_id: 4b7a3392a309426b9803b259d02744e8
+      user_domain_name: admin_domain
+      project_domain_id: 798a070ff3184078b5bffcdcdfda20b6
+    region_name: RegionOne
+    interface: public
+    identity_api_version: 3
+    verify: false
