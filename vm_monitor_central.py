@@ -4,6 +4,8 @@ import requests
 
 from rcsdb.connection import session as rcsdb_session
 from rcsdb.models import VM
+import asyncio
+import aiohttp
 
 # # Create connection to OpenStack cloud
 # conn = openstack.connect(cloud='RCS')
@@ -29,15 +31,26 @@ from rcsdb.models import VM
 
 # pprint(response.json())
 
-for vm in rcsdb_session.query(VM).all():
-    pprint(vm)
-    input()
 
-# vm_ips = [vm.ip for vm in rcsdb_session.query(VM).all()]
-
-for ip in vm_ips:
+async def check_vm_status(session, ip):
     try:
-        response = requests.get(f'http://{ip}:8000/check_up', timeout=5)
-        pprint(response.json())
-    except requests.exceptions.RequestException as e:
-        print(f"Error connecting to VM at {ip}: {e}")
+        async with session.get(f'http://{ip}:8000/check_up', timeout=5) as response:
+            data = await response.json()
+            return ip, data
+    except Exception as e:
+        return ip, f'Error: {e}'
+
+async def check_all_vms():
+    vm_ips = [vm.ip for vm in rcsdb_session.query(VM).all()]
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [check_vm_status(session, ip) for ip in vm_ips]
+        results = await asyncio.gather(*tasks)
+        return results
+
+# Run the async function
+results = asyncio.run(check_all_vms())
+
+results.sort(key=lambda x: x[0])
+
+pprint(results)
