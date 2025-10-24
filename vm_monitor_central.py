@@ -107,7 +107,16 @@ async def purge_all_old_data(num_days: int = 30) -> list[tuple[str, dict | str]]
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def main(args):
+def main():
+    parser = argparse.ArgumentParser(description='VM Monitor Central')
+    parser.add_argument('--gather_one', type=str, metavar='IP', help='Gather usage data from a specific VM by IP address')
+    parser.add_argument('--gather_all', action='store_true', help='Gather usage data from all VMs')
+    parser.add_argument('--purge_one', type=str, nargs=2, metavar=('IP', 'NUM_DAYS'), help='Purge old data for a specific VM by IP address')
+    parser.add_argument('--purge_all', metavar='NUM_DAYS', type=int, help='Purge old data')
+    parser.add_argument('--checkup_one', type=str, metavar='IP', help='Check status of a specific VM by IP address')
+    parser.add_argument('--checkup_all', action='store_true', help='Check status of all VMs')
+
+    args = parser.parse_args()
 
     if args.gather_all:
         results = asyncio.run(get_all_vm_usage_data())
@@ -128,13 +137,4 @@ def main(args):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description='VM Monitor Central')
-    parser.add_argument('--gather_one', type=str, metavar='IP', help='Gather usage data from a specific VM by IP address')
-    parser.add_argument('--gather_all', action='store_true', help='Gather usage data from all VMs')
-    parser.add_argument('--purge_one', type=str, nargs=2, metavar=('IP', 'NUM_DAYS'), help='Purge old data for a specific VM by IP address')
-    parser.add_argument('--purge_all', metavar='NUM_DAYS', type=int, help='Purge old data')
-    parser.add_argument('--checkup_one', type=str, metavar='IP', help='Check status of a specific VM by IP address')
-    parser.add_argument('--checkup_all', action='store_true', help='Check status of all VMs')
-
-    main(parser.parse_args())
+    main()
