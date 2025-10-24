@@ -55,17 +55,20 @@ async def get_vm_usage_data(session,
         logger.info(f'Request URL: {request_str}')
 
         async with session.get(request_str, timeout=5) as response:
+            status_code = response.status
             data = await response.json()
+            logger.info(f'Usage data from {payload[IP_ADDR]} (Status: {status_code})')
             return payload[VM_ID], data
 
     except Exception as e:
+        logger.info(f'Error fetching usage data from {payload[IP_ADDR]} : {e}')
         return payload[VM_ID], f'Error: {e}'
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 async def get_all_vm_usage_data() -> list[tuple[str, dict]]:
 
-    usage_payloads = [get_usage_payload(vm) for vm in rcsdb_session.query(VM).all()]
+    usage_payloads = [get_usage_payload(vm) for vm in rcsdb_session.query(VM).filter(VM.deleted.is_(None)).all()]
 
     async with aiohttp.ClientSession() as session:
 
@@ -98,7 +101,7 @@ async def purge_old_data(session,
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 async def purge_all_old_data(num_days: int = 30) -> list[tuple[str, dict | str]]:
-    vm_ips = [vm.ip for vm in rcsdb_session.query(VM).all()]
+    vm_ips = [vm.ip for vm in rcsdb_session.query(VM).filter(VM.deleted.is_(None)).all()]
 
     async with aiohttp.ClientSession() as session:
         tasks = [purge_old_data(session, ip, num_days) for ip in vm_ips]
