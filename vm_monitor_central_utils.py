@@ -105,8 +105,8 @@ def add_gpu_load_to_database(vm_id: int, load_data: dict):
             for gpu in datum.get('gpus', []):
                 gpu_load = GPULoad(   vm_id=vm_id,
                                       timestamp=datetime.fromisoformat(datum['timestamp']),
-                                      core_use=gpu.get('usage_percent', 0.0),
-                                      mem_use=int(gpu.get('memory_used_mb', 0)))
+                                      core_use=gpu.get('usage_percent'),
+                                      mem_use=int(gpu.get('memory_used_mb')))
                 rcsdb_session.add(gpu_load)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
