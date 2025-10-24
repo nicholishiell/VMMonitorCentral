@@ -48,7 +48,7 @@ def latest_load_update(vm: VM) -> datetime:
     if not vm.gpu:
         return last_vm_date
     else:
-        return max(last_vm_date, last_gpu_date)
+        return min(last_vm_date, last_gpu_date)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -75,25 +75,40 @@ def calculate_avg_load(cpu_usage: list[dict]) -> float:
 
 def add_vm_load_to_database(vm_id: int, load_data: dict):
 
+    # get all existing timestamps for this VM to avoid duplicate entries
+    existing_timestamps = set(  timestamp for timestamp, in rcsdb_session.query(VMLoad.timestamp)
+                                .filter(VMLoad.vm_id == vm_id)
+                                .all())
+
     for datum in load_data.get('data', []):
-        vm_load = VMLoad(   vm_id=vm_id,
-                            timestamp=datetime.fromisoformat(datum['timestamp']),
-                            load=calculate_avg_load(datum.get('cpus', [])),
-                            memfree=datum.get('memory', {}).get('used_mb', 0),
-                            diskfree=datum.get('disk', {}).get('used_mb', 0))
-        rcsdb_session.add(vm_load)
+        if datetime.fromisoformat(datum['timestamp']) in existing_timestamps:
+            continue
+        else:
+            vm_load = VMLoad(   vm_id=vm_id,
+                                timestamp=datetime.fromisoformat(datum['timestamp']),
+                                load=calculate_avg_load(datum.get('cpus', [])),
+                                memfree=datum.get('memory', {}).get('used_mb', 0),
+                                diskfree=datum.get('disk', {}).get('used_mb', 0))
+            rcsdb_session.add(vm_load)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# gpu_count":1,"gpus":[{"gpu_index":0,"memory_total_mb":46068.0,"memory_used_mb":3.0,"usage_percent":0.0}]
 def add_gpu_load_to_database(vm_id: int, load_data: dict):
 
+    # get all existing timestamps for this VM to avoid duplicate entries
+    existing_timestamps = set(  timestamp for timestamp, in rcsdb_session.query(GPULoad.timestamp)
+                                .filter(GPULoad.vm_id == vm_id)
+                                .all())
+
     for datum in load_data.get('data', []):
-        for gpu in datum.get('gpus', []):
-            gpu_load = GPULoad(   vm_id=vm_id,
-                                  timestamp=datetime.fromisoformat(datum['timestamp']),
-                                  core_use=gpu.get('usage_percent', 0.0),
-                                  mem_used=int(gpu.get('memory_used_mb', 0)))
-            rcsdb_session.add(gpu_load)
+        if datetime.fromisoformat(datum['timestamp']) in existing_timestamps:
+            continue
+        else:
+            for gpu in datum.get('gpus', []):
+                gpu_load = GPULoad(   vm_id=vm_id,
+                                      timestamp=datetime.fromisoformat(datum['timestamp']),
+                                      core_use=gpu.get('usage_percent', 0.0),
+                                      mem_use=int(gpu.get('memory_used_mb', 0)))
+                rcsdb_session.add(gpu_load)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -110,15 +125,7 @@ def add_load_data_to_database(results : list[tuple[str, dict]]):
 
         add_vm_load_to_database(int(vm_id), data)
 
-        for gpu_entry in data.get('gpu_load', []):
-            gpu_load = GPULoad(
-                vm_id=vm.id,
-                timestamp=datetime.fromisoformat(gpu_entry['timestamp']),
-                core_use=gpu_entry.get('core_use'),
-                mem_activity=gpu_entry.get('mem_activity'),
-                mem_use=gpu_entry.get('mem_use')
-            )
-            rcsdb_session.add(gpu_load)
+        add_gpu_load_to_database(int(vm_id), data)
 
     rcsdb_session.commit()
 

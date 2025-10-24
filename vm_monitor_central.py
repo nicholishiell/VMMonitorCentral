@@ -2,12 +2,8 @@ from pprint import pprint
 import asyncio
 import logging
 import aiohttp
-import requests
 import ipaddress
 import argparse
-
-from rcsdb.connection import session as rcsdb_session
-from rcsdb.models import VM, VMLoad, GPULoad
 
 from vm_monitor_central_utils import *
 
@@ -37,7 +33,7 @@ async def check_vm_status(session, ip):
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-async def check_all_vms() -> list[tuple[str, dict]]:
+async def check_all_vms() -> list[tuple[str, dict | str]]:
 
     vm_ips = [vm.ip for vm in rcsdb_session.query(VM).all()]
 
@@ -80,13 +76,34 @@ async def get_all_vm_usage_data() -> list[tuple[str, dict]]:
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def get_one_vm_usage_data(ip: str) -> tuple[str, dict]:
+def get_one_vm_usage_data(ip: str):
     pass
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-async def purge_old_data():
-    # Placeholder for purge logic
-    pass
+async def purge_old_data(session,
+                         ip: str,
+                         num_days: int) -> tuple[str, dict | str]:
+
+    try:
+        # Validate IP address format
+        ipaddress.ip_address(ip)
+        async with session.post(f'http://{ip}:8000/purge?days={num_days}', timeout=5) as response:
+            data = await response.json()
+            logger.info(f'Purge response from {ip}: {data}')
+            return ip, data
+    except Exception as e:
+        return ip, f'Error: {e}'
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+async def purge_all_old_data(num_days: int = 30) -> list[tuple[str, dict | str]]:
+    vm_ips = [vm.ip for vm in rcsdb_session.query(VM).all()]
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [purge_old_data(session, ip, num_days) for ip in vm_ips]
+        results = await asyncio.gather(*tasks)
+        return results
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -96,12 +113,14 @@ def main(args):
         results = asyncio.run(get_all_vm_usage_data())
         add_load_data_to_database(results)
     elif args.gather_one:
-        result = get_one_vm_usage_data(args.gather_one)
-        pprint(result)
+        pass
     elif args.purge_all:
-        asyncio.run(purge_old_data())
+        asyncio.run(purge_all_old_data(num_days=args.purge_all))
+    elif args.purge_one:
+        pass
+    elif args.checkup_one:
+        pass
     else:
-        # Default behavior
         results = asyncio.run(check_all_vms())
         results.sort(key=lambda x: x[0])
         pprint(results)
@@ -113,8 +132,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='VM Monitor Central')
     parser.add_argument('--gather_one', type=str, metavar='IP', help='Gather usage data from a specific VM by IP address')
     parser.add_argument('--gather_all', action='store_true', help='Gather usage data from all VMs')
-    parser.add_argument('--purge_one', type=str, metavar='IP', help='Purge old data for a specific VM by IP address')
-    parser.add_argument('--purge_all', action='store_true', help='Purge old data')
+    parser.add_argument('--purge_one', type=str, nargs=2, metavar=('IP', 'NUM_DAYS'), help='Purge old data for a specific VM by IP address')
+    parser.add_argument('--purge_all', metavar='NUM_DAYS', type=int, help='Purge old data')
     parser.add_argument('--checkup_one', type=str, metavar='IP', help='Check status of a specific VM by IP address')
     parser.add_argument('--checkup_all', action='store_true', help='Check status of all VMs')
 
