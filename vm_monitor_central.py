@@ -108,6 +108,7 @@ async def purge_all_old_data(num_days: int = 30) -> list[tuple[str, dict | str]]
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def main():
+
     parser = argparse.ArgumentParser(description='VM Monitor Central')
     parser.add_argument('--gather_one', type=str, metavar='IP', help='Gather usage data from a specific VM by IP address')
     parser.add_argument('--gather_all', action='store_true', help='Gather usage data from all VMs')

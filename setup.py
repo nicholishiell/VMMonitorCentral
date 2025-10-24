@@ -14,7 +14,7 @@ setup(
     description="The central hub for the VM monitoring tool",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/nicholishiell/VMonCentral",  # Replace with actual URL if different
+    url="https://github.com/nicholishiell/VMonCentral",
     project_urls={
         "Bug Tracker": "https://github.com/nicholishiell/VMonCentral/issues",
     },
@@ -22,7 +22,7 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "aiohttp>=3.8.0",
-        "rcsdb",  # Assuming this is your custom database package
+        "rcsdb",
     ],
     extras_require={
         "dev": [
