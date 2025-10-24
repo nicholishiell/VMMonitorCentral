@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 
 from rcsdb.connection import session as rcsdb_session
